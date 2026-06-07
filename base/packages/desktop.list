@@ -1,0 +1,125 @@
+# MerphisOS — Desktop Package List (Hybrido DE + Apps)
+# Pachete pentru instalarea cu Hybrido Desktop Environment
+
+# Plasma 6 Desktop
+plasma-desktop
+plasma-workspace
+kwin
+kinfocenter
+systemsettings
+kde-cli-tools
+kde-config-gtk-style
+kde-config-gtk-style-preview
+qt6-style-kvantum
+kvantum
+
+# Plasma extras (widgets, utilities)
+plasma-widgets-addons
+kdeplasma-addons
+kactivitymanagerd
+kdecoration
+krunner
+kglobalacceld
+milou
+kpipewire
+
+# Hybrido DE — pachetele noastre
+merphisos-hybrido-theme
+merphisos-hybrido-panels
+merphisos-hybrido-scripts
+merphisos-default-settings
+
+# File manager (înlocuiește Dolphin)
+nemo
+nemo-audio-tab
+nemo-fileroller
+nemo-image-converter
+nemo-preview
+nemo-rename
+nemo-terminal
+gvfs
+gvfs-backends
+
+# Terminal
+kitty
+
+# Text editor
+kate
+
+# Screenshot
+spectacle
+
+# Browser
+librewolf
+
+# Media
+vlc
+vlc-plugin-access-extra
+vlc-plugin-video-splitter
+gstreamer1.0-plugins-good
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-ugly
+gstreamer1.0-libav
+ffmpeg
+pipewire
+pipewire-pulse
+wireplumber
+pulseaudio-utils
+pavucontrol-qt
+
+# VPN
+wireguard-tools
+openresolv
+
+# Passwords
+bitwarden
+# sau vaultwarden (self-hosted)
+
+# Date / Backup
+rsync
+restic
+deja-dup
+
+# Tools
+flatpak
+flatpak-builder
+gnome-software-plugin-flatpak
+podman
+podman-docker
+distrobox
+curl
+wget
+htop
+btop
+neofetch
+fastfetch
+
+# Development
+git
+git-lfs
+python3
+python3-pip
+python3-venv
+nodejs
+npm
+gcc
+g++
+make
+cmake
+meson
+ninja-build
+rustc
+cargo
+gdb
+strace
+ltrace
+lsof
+valgrind
+
+# Fonts
+fonts-inter
+fonts-noto
+fonts-noto-cjk
+fonts-firacode
+fonts-font-awesome
+fonts-jetbrains-mono

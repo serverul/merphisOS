@@ -1,0 +1,63 @@
+# MerphisOS — Core Package List (obligatorii)
+# Pachete care intră în ORICE instalare MerphisOS
+
+# Sistem de bază
+systemd
+systemd-boot
+systemd-resolved
+dbus
+polkit
+udev
+
+# Kernel (custom, din repo-ul nostru)
+merphisos-kernel
+merphisos-kernel-headers
+
+# Strumente de bază
+bash
+coreutils
+findutils
+grep
+sed
+gawk
+util-linux
+e2fsprogs
+btrfs-progs
+xfsprogs
+dosfstools
+mtools
+
+# Rețea
+network-manager
+wireless-tools
+iwd
+firmware-iwlwifi
+firmware-linux
+firmware-realtek
+firmware-amd-graphics
+firmware-misc-nonfree
+
+# Securitate
+nftables
+apparmor
+apparmor-profiles
+auditd
+lynis
+rkhunter
+
+# DNS
+systemd-resolved
+dnsutils
+
+# Compilare
+build-essential
+gcc
+g++
+make
+patch
+bc
+bison
+flex
+openssl
+libssl-dev
+libelf-dev
