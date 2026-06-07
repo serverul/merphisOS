@@ -232,17 +232,34 @@ cat > "${ISO_DIR}/boot/grub/grub.cfg" << 'GRUB'
 set default=0
 set timeout=5
 loadfont=unicode
-insmod efi_gop insmod efi_uga
-insmod gfxterm insmod gfxmenu
+insmod efi_gop
+insmod efi_uga
+insmod gfxterm
+insmod gfxmenu
+insmod loopback
+insmod iso9660
+insmod squash4
 terminal_output gfxterm
 set gfxmode=1920x1080,1366x768,1024x768,auto
 set gfxpayload=keep
+
 menuentry "MerphisOS 0.2-beta — Hybrido DE" {
     linux /boot/vmlinuz boot=live live-media-path=/live/ quiet splash
     initrd /boot/initrd
 }
+
+menuentry "MerphisOS 0.2-beta (VirtualBox)" {
+    linux /boot/vmlinuz boot=live live-media-path=/live/ quiet splash nomodeset video=vesafb:off vga=normal
+    initrd /boot/initrd
+}
+
 menuentry "MerphisOS 0.2-beta (Safe Mode)" {
-    linux /boot/vmlinuz boot=live live-media-path=/live/ nomodeset noapic nolapic
+    linux /boot/vmlinuz boot=live live-media-path=/live/ nomodeset noapic nolapic acpi=off
+    initrd /boot/initrd
+}
+
+menuentry "MerphisOS 0.2-beta (Verify & Test)" {
+    linux /boot/vmlinuz boot=live live-media-path=/live/ debug systemd.log_level=debug systemd.log_target=console
     initrd /boot/initrd
 }
 GRUB

@@ -15,10 +15,11 @@ RUN rm -f /etc/apt/sources.list.d/* 2>/dev/null; true && \
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     echo 'debconf debconf/priority select critical' | debconf-set-selections
 
-# 1. System base
+# 1. System base + live-boot pentru ISO live
 RUN apt-get update -qq && apt-get install -y -qq \
     systemd systemd-resolved dbus udev sudo locales \
     linux-image-amd64 \
+    live-boot live-config live-tools \
     && echo "=== 1/8 OK ==="
 
 # 2. Firmware
