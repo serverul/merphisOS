@@ -1,4 +1,4 @@
-# MerphisOS — SPECIFICATION v0.1
+# MerphisOS — SPECIFICATION v0.3.1
 
 > **Filosofie:** Your system, your rules.  
 > **Target:** Laptop / workstation personal  

@@ -1,4 +1,4 @@
-# Hybrido DE — Design Specification
+# Hybrido DE v0.3.1-beta — Design Specification
 
 > Mediu desktop hibrid: macOS și Windows, la alegere.
 

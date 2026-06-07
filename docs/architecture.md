@@ -1,4 +1,4 @@
-# MerphisOS — Arhitectura Sistemului
+# MerphisOS 0.3.1-beta — Arhitectura Sistemului
 
 > O privire de ansamblu asupra modului în care funcționează MerphisOS.
 
@@ -20,84 +20,83 @@
 │                    DEBIAN 13 TRIXIE BASE                     │
 │  (sistem de pachete, biblioteci, toolchain)                 │
 ├──────────────────────────────────────────────────────────────┤
-│                   CUSTOM KERNEL (HARDENED)                   │
-│  (latest stable + module signing + lockdown + ASLR)         │
+│                   KERNEL (linux-image-amd64)                  │
+│  (stock Debian 6.12.90, zstd compressed, relocatable)       │
 ├──────────────────────────────────────────────────────────────┤
 │          HARDWARE (laptop / workstation x86_64)             │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Boot Flow
+## 2. Boot Flow (ISO Live)
 
 ```
 Power On
    ↓
 UEFI Firmware
    ↓
-systemd-boot (bootloader)
-   ├── Kernel MerphisOS (semnat, verified)
-   │   ↓
-   │   systemd (PID 1)
-   │   ├── systemd-resolved (DNS)
-   │   ├── systemd-udevd (hardware)
-   │   ├── systemd-logind (sessions)
-   │   ├── NetworkManager
-   │   ├── firewall (nftables)
-   │   ├── AppArmor (profiles)
-   │   └── ... alte servicii
-   │   ↓
-   │   SDDM (login manager)
-   │   ↓
-   │   Plasma 6 + KWin (Wayland)
-   │   ↓
-   │   Hybrido DE (tema + panel + apps)
-   │   ↓
-   │   Welcome / First Run
-   └──
-   └── (opțional) boot alternativ:
-       ├── Memtest86
-       └── Recovery mode
+GRUB (grub-mkrescue)
+   ├── MerphisOS (default)
+   │   ├── VirtualBox (nomodeset)
+   │   ├── Safe Mode (noapic nolapic acpi=off)
+   │   └── Verify & Test (debug logs)
+   ├── Reboot
+   └── Shutdown
+   ↓ (select MerphisOS)
+Kernel 6.12.90 (boot=live)
+   ↓
+initrd (live-boot)
+   ↓
+mount squashfs (/live/filesystem.squashfs)
+   ↓
+systemd (PID 1)
+   ├── systemd-resolved (Quad9 DoT)
+   ├── systemd-udevd (hardware)
+   ├── systemd-logind (sessions)
+   ├── NetworkManager
+   ├── firewall (nftables)
+   └── AppArmor
+   ↓
+SDDM (auto-login: live/merphisos)
+   ↓
+Plasma 6 + KWin Wayland
+   ↓
+hybrido-first-run (Baloo OFF, telemetry OFF, theme setup)
+   ↓
+Desktop ready
+```
+
+### Boot Flow (Instalat pe disc — via Calamares)
+
+```
+Power On → UEFI → GRUB → Kernel → systemd → SDDM → Plasma 6 → Desktop
 ```
 
 ## 3. Network Stack
 
 ```
 User Space
-├── Browser (LibreWolf) → DNS-over-HTTPS → Cloudflare/Quad9
-├── Apps (Flatpak) → sandboxed network
-├── CLI (Distrobox) → container network namespace
-├── VPN (Mullvad) → WireGuard → kill switch
-└── systemd-resolved → DNS-over-TLS → Quad9
+├── Browser (LibreWolf) → Quad9 DoH via librewolf config
+├── Apps → system DNS
+├── systemd-resolved → DNS-over-TLS → Quad9 (9.9.9.9)
+│   └── DNSSEC validation enabled
+└── firewall (nftables) → DROP inbound, allow established
 
 Kernel Space
-├── nftables (firewall)
-├── NetworkManager (WiFi/Ethernet)
-└── WireGuard (VPN interface)
+├── nftables (firewall — deny inbound)
+└── NetworkManager (WiFi/Ethernet — MAC randomizare)
 
 Hardware
-├── WiFi: Intel AXxxx (MAC randomizat)
-└── Ethernet: Realtek/Intel (gigabit)
+├── WiFi: MAC randomizat la scanare
+└── Ethernet: standard DHCP
 ```
 
 ## 4. Container Strategy
 
 ```
 MerphisOS Host
-├── Flatpak (GUI apps)
-│   ├── Mullvad Browser
-│   ├── Stremio
-│   └── VSCodium
-│
-├── Distrobox (CLI containers)
-│   ├── Debian container (dev tools)
-│   ├── Fedora container (testing)
-│   └── Arch container (AUR packages)
-│
-└── Podman (service containers)
-    ├── Vaultwarden
-    ├── Nginx/Caddy
-    ├── AdGuard Home
-    └── ... orice self-hosted
+└── Flatpak (GUI apps sandboxed)
+    ├── Flathub pre-configurat (auto-update OFF)
+    └── Instalezi tu aplicațiile de care ai nevoie
 ```
 
 ## 5. Security Architecture

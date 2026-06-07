@@ -1,4 +1,4 @@
-# MerphisOS — Privacy Policy
+# MerphisOS 0.3.1-beta — Privacy Policy
 
 > **TL;DR:** MerphisOS nu colectează, nu stochează, și nu transmite nicio
 > informație despre tine, sistemul tău, sau ce faci cu el.
