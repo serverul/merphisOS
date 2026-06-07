@@ -97,13 +97,29 @@ Windows), și o suită de aplicații alese cu grijă pentru confidențialitate
 
 ## 🏗️ Build
 
-*(în curând — scripturile de build sunt în lucru)*
-
 ```bash
+# Prerequisites
 git clone git@github.com:serverul/merphisOS.git
 cd merphisOS
-./tools/build.sh
+
+# 1. Export Debian Trixie rootfs (needs Docker)
+docker create --name merphisos-rootfs debian:trixie-slim
+docker export merphisos-rootfs -o /tmp/debian-trixie-rootfs.tar
+docker rm merphisos-rootfs
+
+# 2. Build ISO (needs Docker with --privileged)
+docker build -t merphisos-builder -f tools/Dockerfile.build .
+docker run --rm --privileged \
+  -v $(pwd)/base/scripts/build-iso.sh:/build/build.sh:ro \
+  -v $(pwd)/build:/build/output \
+  -v /tmp/debian-trixie-rootfs.tar:/build/rootfs.tar:ro \
+  merphisos-builder \
+  bash /build/build.sh
+
+# 3. ISO is at build/merphisos-0.1-alpha-amd64.iso
 ```
+
+> **Primul ISO MerphisOS (0.1-alpha) a fost construit cu succes pe 7 Iunie 2026.**
 
 ---
 

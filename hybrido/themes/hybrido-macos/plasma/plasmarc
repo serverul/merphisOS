@@ -1,0 +1,13 @@
+[ContrastEffect]
+contrast=0.9
+intensity=0.5
+saturation=0.5
+
+[General]
+ColorScheme=HybridoMacOS
+
+[Icons]
+Theme=Tela-circle
+
+[Wallpaper]
+wallpaper=/usr/share/wallpapers/MerphisOS/macos-dark.jpg

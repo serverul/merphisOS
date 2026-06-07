@@ -1,0 +1,13 @@
+[ContrastEffect]
+contrast=0.9
+intensity=0.5
+saturation=0.5
+
+[General]
+ColorScheme=HybridoWindows
+
+[Icons]
+Theme=Tela-circle-dark
+
+[Wallpaper]
+wallpaper=/usr/share/wallpapers/MerphisOS/win-dark.jpg

@@ -18,14 +18,17 @@
 
 ---
 
-## 🧱 Faza 1: Bootstrap (săptămâna 1-3)
+## 🧱 Faza 1: Bootstrap (săptămâna 1-3) ✅
 
-- [ ] Instalare și învățare mkosi
-- [ ] Primul ISO bootabil Debian Trixie (default DE)
-- [ ] Kernel custom: config → compilare → boot
-- [ ] Sistem de bază minimal (fără DE)
-- [ ] Sistem de bază cu Plasma 6
-- [ ] Scripturi de automatizare build
+- [x] Instalare și învățare mkosi
+- [x] Primul ISO bootabil Debian Trixie
+- [x] Docker-based build pipeline
+- [x] Kernel + initrd în ISO
+- [x] Configurări de bază (DNS, firewall, sysctl, utilizator)
+- [x] Pachete de bază (NetworkManager, PipeWire, Flatpak, apps)
+- [x] Scripturi de build funcționale
+- [ ] Kernel custom (în lucru)
+- [ ] Hybrido DE în ISO
 
 **Output:** ISO bootabil cu Debian Trixie + Plasma 6.  
 **Test:** Boot în QEMU → login → terminal → shutdown.
