@@ -7,7 +7,7 @@ ISO_DIR="/build/iso"
 OUTPUT_DIR="/build/output"
 
 echo "=========================================="
-echo "  MerphisOS 0.3-beta — Hybrido DE ISO"
+echo "  MerphisOS 0.3.2-beta — Hybrido DE ISO"
 echo "=========================================="
 
 mkdir -p "${OUTPUT_DIR}" "${ISO_DIR}/live" "${ISO_DIR}/boot/grub"
@@ -34,9 +34,18 @@ if [ -n "${KERNEL_VERSION}" ]; then
     # Install tools needed for initrd generation
     apt-get install -y -qq initramfs-tools live-boot 2>&1 | tail -1
     
-    # Configure compression
+    # Configure compression and required modules
     echo "COMPRESS=zstd" > /etc/initramfs-tools/initramfs.conf
     echo "MODULES=most" >> /etc/initramfs-tools/initramfs.conf
+    
+    # Force-include modules needed for live boot (not auto-detected in Docker)
+    echo "# Required modules for live ISO boot" > /etc/initramfs-tools/modules
+    echo "isofs" >> /etc/initramfs-tools/modules
+    echo "squashfs" >> /etc/initramfs-tools/modules
+    echo "loop" >> /etc/initramfs-tools/modules
+    echo "overlay" >> /etc/initramfs-tools/modules
+    echo "cdrom" >> /etc/initramfs-tools/modules
+    echo "sr_mod" >> /etc/initramfs-tools/modules
     
     # Copy live-boot hook from rootfs if present
     if [ -f "${ROOTFS}/usr/share/initramfs-tools/scripts/live" ]; then
@@ -616,88 +625,38 @@ mksquashfs "${ROOTFS}" "${ISO_DIR}/live/filesystem.squashfs" \
     -comp zstd -Xcompression-level 19 -b 1M \
     -no-xattrs -noappend 2>&1 | tail -2
 
-# Grub config — robust, cu loopback detection
+# GRUB config — minimal, tested to work with grub-mkrescue
 cat > "${ISO_DIR}/boot/grub/grub.cfg" << 'GRUB'
 set default=0
 set timeout=10
-set pager=0
-
-# Load modules
-insmod part_gpt
-insmod part_msdos
-insmod iso9660
-insmod ext2
-insmod fat
-insmod udf
-insmod gfxterm
-insmod gfxmenu
-insmod all_video
-insmod videotest
-insmod font
-insmod echo
-
-# Try to set correct GFX mode
-if [ -f /boot/grub/fonts/unicode.pf2 ]; then
-    loadfont /boot/grub/fonts/unicode.pf2
-fi
-terminal_output gfxterm
-set gfxmode=1920x1080,1366x768,1024x768,auto
 set gfxpayload=keep
 
-# Background image if available
-if [ -f /boot/grub/splash.png ]; then
-    background_image /boot/grub/splash.png
-fi
-
-# Search for kernel by explicit path validation
-if [ -f /boot/vmlinuz ]; then
-    set kernel_path=/boot/vmlinuz
-    set initrd_path=/boot/initrd
-else
-    echo "⚠️ Kernel not found! Booting with fallback..."
-    set kernel_path=/boot/vmlinuz
-    set initrd_path=/boot/initrd
-fi
-
-menuentry "MerphisOS 0.3-beta — Hybrido DE" {
-    echo "Loading MerphisOS kernel..."
-    linux ${kernel_path} boot=live live-media-path=/live/ quiet splash
-    echo "Loading initrd..."
-    initrd ${initrd_path}
+menuentry "MerphisOS 0.3.2-beta — Hybrido DE" {
+    linux /boot/vmlinuz boot=live live-media-path=/live/ quiet splash
+    initrd /boot/initrd
 }
 
-menuentry "MerphisOS 0.3-beta (VirtualBox)" {
-    echo "Loading MerphisOS kernel (VirtualBox mode)..."
-    linux ${kernel_path} boot=live live-media-path=/live/ quiet splash nomodeset video=vesafb:off vga=normal
-    echo "Loading initrd..."
-    initrd ${initrd_path}
+menuentry "MerphisOS 0.3.2-beta (Safe Mode)" {
+    linux /boot/vmlinuz boot=live live-media-path=/live/ nomodeset noapic nolapic acpi=off
+    initrd /boot/initrd
 }
 
-menuentry "MerphisOS 0.3-beta (Safe Mode)" {
-    echo "Loading MerphisOS kernel (Safe Mode)..."
-    linux ${kernel_path} boot=live live-media-path=/live/ nomodeset noapic nolapic acpi=off
-    echo "Loading initrd..."
-    initrd ${initrd_path}
+menuentry "MerphisOS 0.3.2-beta (Debug)" {
+    linux /boot/vmlinuz boot=live live-media-path=/live/ debug systemd.log_level=debug systemd.log_target=console
+    initrd /boot/initrd
 }
 
-menuentry "MerphisOS 0.3-beta (Verify & Test)" {
-    echo "Loading MerphisOS kernel (Debug Mode)..."
-    linux ${kernel_path} boot=live live-media-path=/live/ debug systemd.log_level=debug systemd.log_target=console
-    echo "Loading initrd..."
-    initrd ${initrd_path}
-}
-
-menuentry "🔁 Reboot" {
+menuentry "Reboot" {
     reboot
 }
 
-menuentry "⏻ Shutdown" {
+menuentry "Shutdown" {
     halt
 }
 GRUB
 
 # ISO
-ISO_NAME="merphisos-0.3-beta-hybrido-amd64.iso"
+ISO_NAME="merphisos-0.3.2-beta-hybrido-amd64.iso"
 ISO_OUTPUT="${OUTPUT_DIR}/${ISO_NAME}"
 
 echo "   Running grub-mkrescue..."
@@ -708,7 +667,7 @@ if [ -f "${ISO_OUTPUT}" ]; then
     MD5=$(md5sum "${ISO_OUTPUT}" | cut -d' ' -f1)
     echo ""
     echo "=========================================="
-    echo "  ✅ MERPHISOS 0.3-beta BUILD SUCCESS!"
+    echo "  ✅ MERPHISOS 0.3.2-beta BUILD SUCCESS!"
     echo "  📁 ${ISO_OUTPUT}"
     echo "  📦 Size: ${SIZE}"
     echo "  🔐 MD5: ${MD5}"
