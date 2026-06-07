@@ -448,6 +448,7 @@ OnlyIndexBasicMetadata=true
 BALOOETC
 
 # --- systemd-journald: volatile, limited ---
+mkdir -p "${ROOTFS}/etc/systemd/journald.conf.d"
 cat > "${ROOTFS}/etc/systemd/journald.conf.d/99-merphisos.conf" << 'JOURNAL'
 [Journal]
 Storage=volatile
