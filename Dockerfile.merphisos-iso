@@ -1,0 +1,21 @@
+# MerphisOS ISO Builder
+FROM debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install ISO build tools
+RUN apt-get update -qq && apt-get install -y -qq \
+    xorriso mtools \
+    grub-pc-bin \
+    grub-efi-amd64-bin \
+    squashfs-tools \
+    rsync \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build directory
+RUN mkdir -p /build/rootfs /build/iso/live /build/iso/boot/grub /build/output
+
+COPY build-iso.sh /build/build-iso.sh
+RUN chmod +x /build/build-iso.sh
+
+WORKDIR /build
+CMD ["/build/build-iso.sh"]
