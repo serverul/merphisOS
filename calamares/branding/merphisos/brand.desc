@@ -1,0 +1,36 @@
+branding: merphisos
+strings:
+    productName: MerphisOS
+    shortProductName: MerphisOS
+    version: "0.2-beta"
+    shortVersion: "0.2-beta"
+    versionedName: "MerphisOS 0.2-beta"
+    shortVersionedName: "MerphisOS 0.2-beta"
+    bootloaderEntryName: "MerphisOS"
+    productUrl: "https://github.com/serverul/merphisOS"
+    supportUrl: "https://github.com/serverul/merphisOS"
+    knownIssuesUrl: "https://github.com/serverul/merphisOS/issues"
+    releaseNotesUrl: "https://github.com/serverul/merphisOS/releases/tag/v0.2-beta"
+    donateUrl: ""
+    neatProductName: MerphisOS
+    productNameForWebsite: MerphisOS
+welcome:
+    welcomeMessage: "Bine ai venit în MerphisOS!\n\nYour system, your rules.\n\nMerphisOS este un sistem de operare Linux privacy-first, securizat și frumos, construit pe Debian 13 Trixie."
+    welcomeMessageSelect: ""
+    showSupportUrl: true
+    showKnownIssuesUrl: true
+    showReleaseNotesUrl: true
+    showDonateUrl: false
+    image: "squid.png"
+    logo: "merphisos-logo.png"
+slideshow: "show.qml"
+style:
+    sidebarBackground: "#1c1c1e"
+    sidebarBackgroundSelected: "#007aff"
+    sidebarText: "#f0f0f0"
+    sidebarTextSelect: "#ffffff"
+    headerText: "#f0f0f0"
+    headerTextSelected: "#007aff"
+    bodyText: "#cccccc"
+    bodyTextSelected: "#f0f0f0"
+    linkText: "#007aff"

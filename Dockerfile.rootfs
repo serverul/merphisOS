@@ -40,15 +40,18 @@ RUN apt-get install -y -qq \
     pipewire pipewire-pulse wireplumber ffmpeg \
     && echo "=== 4/8 OK ==="
 
-# 5. Plasma 6 Desktop (correct package names)
+# 5. Plasma 6 Desktop + Calamares + Plymouth installer
 RUN apt-get install -y -qq \
     kde-plasma-desktop \
     plasma-workspace \
     kwin-common kwin-wayland \
+    kwin-addons \
     systemsettings \
     sddm sddm-theme-breeze \
     plasma-widgets-addons \
     kde-config-gtk-style qt6-style-kvantum \
+    calamares calamares-settings-debian \
+    plymouth plymouth-themes plymouth-x11 \
     && echo "=== 5/8 OK ==="
 
 # 6. Apps (Nemo replaces Dolphin)
@@ -68,11 +71,11 @@ RUN apt-get install -y -qq extrepo && \
     flatpak fastfetch rsync \
     && echo "=== 7/8 OK ==="
 
-# Cleanup + user
+# Cleanup + live user (installed via Calamares)
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    useradd -m -s /bin/bash -G sudo,audio,video,cdrom,plugdev,netdev vladd && \
-    echo 'vladd:merphisos' | chpasswd && \
-    echo 'merphisos' > /etc/hostname && \
+    useradd -m -s /bin/bash -G sudo,audio,video,cdrom,plugdev,netdev live && \
+    echo 'live:merphisos' | chpasswd && \
+    echo 'merphisos-live' > /etc/hostname && \
     sed -i 's/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && \
     sed -i 's/^# *ro_RO.UTF-8/ro_RO.UTF-8/' /etc/locale.gen && \
     locale-gen && \

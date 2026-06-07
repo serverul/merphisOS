@@ -139,46 +139,78 @@ if [ -d "/build/artwork/sddm" ]; then
     echo "   ✅ SDDM logo installed"
 fi
 
-# --- User config defaults ---
-mkdir -p "${ROOTFS}/home/vladd/.config"
-mkdir -p "${ROOTFS}/home/vladd/.local/share/plasma"
-mkdir -p "${ROOTFS}/home/vladd/.config/plasma-workspace"
-cat > "${ROOTFS}/home/vladd/.config/plasma-workspace/first_run" << 'EOF'
+# --- Hybrido Scripts in PATH ---
+cp /build/artwork/scripts/switch-mode.sh "${ROOTFS}/usr/local/bin/switch-mode"
+cp /build/artwork/scripts/first-run.sh "${ROOTFS}/usr/local/bin/hybrido-first-run"
+chmod +x "${ROOTFS}/usr/local/bin/switch-mode" "${ROOTFS}/usr/local/bin/hybrido-first-run"
+echo "   ✅ Hybrido scripts installed (switch-mode, hybrido-first-run)"
+
+# --- Calamares installer desktop launcher ---
+mkdir -p "${ROOTFS}/home/live/.config/autostart"
+cat > "${ROOTFS}/home/live/.config/autostart/hybrido-first-run.desktop" << 'AUTOSTART'
+[Desktop Entry]
+Type=Application
+Name=Hybrido First Run
+Exec=/usr/local/bin/hybrido-first-run
+Terminal=false
+X-KDE-autostart-after=plasma-core
+X-KDE-autostart-phase=2
+OnlyShowIn=KDE
+AUTOSTART
+
+# --- Installer shortcut on desktop ---
+mkdir -p "${ROOTFS}/home/live/Desktop"
+cat > "${ROOTFS}/home/live/Desktop/calamares.desktop" << 'CALADESK'
+[Desktop Entry]
+Type=Application
+Name=Install MerphisOS
+Comment=Instalează MerphisOS pe hard disk
+Exec=calamares
+Icon=drive-harddisk
+Terminal=false
+Categories=Qt;KDE;System;
+CALADESK
+chmod +x "${ROOTFS}/home/live/Desktop/calamares.desktop"
+
+# --- User config defaults ===
+echo "   Configuring live user defaults..."
+mkdir -p "${ROOTFS}/home/live/.config"
+mkdir -p "${ROOTFS}/home/live/.local/share/plasma"
+mkdir -p "${ROOTFS}/home/live/.config/plasma-workspace"
+cat > "${ROOTFS}/home/live/.config/plasma-workspace/first_run" << 'EOF'
 first_run=false
 EOF
 
 # KWin: Wayland, no X11
-cat > "${ROOTFS}/home/vladd/.config/kwinrc" << 'KWIN'
+cat > "${ROOTFS}/home/live/.config/kwinrc" << 'KWIN'
 [Compositing]
 Backend=OpenGL
 Enabled=true
 OpenGLIsUnsafe=false
-
 [Wayland]
 InputMethod[$e]=
-
 [org.kde.kdecoration2]
 library=org.kde.breeze
 theme=Breeze
 KWIN
 
 # Nemo as default file manager
-cat > "${ROOTFS}/home/vladd/.config/mimeapps.list" << 'MIME'
+cat > "${ROOTFS}/home/live/.config/mimeapps.list" << 'MIME'
 [Default Applications]
 inode/directory=nemo.desktop;
 application/x-directory=nemo.desktop;
 MIME
 
 # Kitty as default terminal
-mkdir -p "${ROOTFS}/home/vladd/.local/share/konsole"
-cat > "${ROOTFS}/home/vladd/.config/konsolerc" << 'KONSOLE'
+mkdir -p "${ROOTFS}/home/live/.local/share/konsole"
+cat > "${ROOTFS}/home/live/.config/konsolerc" << 'KONSOLE'
 [Desktop Entry]
 DefaultProfile=MerphisOS.profile
 KONSOLE
 
-# LibreWolf privacy overrides
-mkdir -p "${ROOTFS}/home/vladd/.librewolf"
-cat > "${ROOTFS}/home/vladd/.librewolf/overrides.cfg" << 'LIBREWOLF'
+# LibreWolf privacy overrides (also applied system-wide via /etc/librewolf)
+mkdir -p "${ROOTFS}/home/live/.librewolf"
+cat > "${ROOTFS}/home/live/.librewolf/overrides.cfg" << 'LIBREWOLF'
 lockPref("privacy.firstparty.isolate", true);
 lockPref("privacy.resistFingerprinting", true);
 lockPref("privacy.trackingprotection.enabled", true);
@@ -190,7 +222,7 @@ lockPref("datareporting.healthreport.uploadEnabled", false);
 lockPref("browser.ping-centre.telemetry", false);
 LIBREWOLF
 
-# SDDM
+# SDDM + auto-login for live user
 mkdir -p "${ROOTFS}/etc/sddm.conf.d"
 cat > "${ROOTFS}/etc/sddm.conf.d/merphisos.conf" << 'SDDM'
 [Theme]
@@ -199,15 +231,176 @@ Font=Inter,10
 [General]
 HaltCommand=/usr/bin/systemctl poweroff
 RebootCommand=/usr/bin/systemctl reboot
+[Autologin]
+User=live
+Session=plasma-wayland
 SDDM
 
-# Fix ownership
-chown -R 1000:1000 "${ROOTFS}/home/vladd"
+# Calamares config (DON'T auto-start - launched from desktop icon)
+mkdir -p "${ROOTFS}/etc/calamares"
+cat > "${ROOTFS}/etc/calamares/settings.conf" << 'CALASET'
+---
+modules-search: [ /lib/calamares/modules, /etc/calamares/modules ]
+sequence:
+- brand:
+    - welcome
+    - license
+- locale:
+    - locale
+- partition:
+    - partition
+- users:
+    - users
+- networkcfg:
+    - networkcfg
+- localecfg:
+    - localecfg
+- luksopenswaphookcfg:
+    - luksopenswaphookcfg
+- plymouthcfg:
+    - plymouthcfg
+- grubcfg:
+    - grubcfg
+- fstab:
+    - fstab
+- mount:
+    - mount
+- initramfg:
+    - initramfs
+- unpackfs:
+    - unpackfs
+- bootloader:
+    - bootloader
+- services:
+    - services
+- grubcfg:
+    - grubcfg
+- plymouthcfg:
+    - plymouthcfg
+- hwclock:
+    - hwclock
+- shutdown:
+    - shutdown
+branding: merphisos
+prompt-install: true
+dont-chroot: false
+oem-setup: false
+disable-cancel: false
+disable-cancel-during-exec: true
+preserve-files: []
+CALASET
 
-# Copy to skel
+# Fix ownership
+chown -R 1000:1000 "${ROOTFS}/home/live" "${ROOTFS}/home/live/Desktop"
+
+# Copy to skel (for newly created users during install)
 mkdir -p "${ROOTFS}/etc/skel"
-cp -r "${ROOTFS}/home/vladd/.config" "${ROOTFS}/etc/skel/" 2>/dev/null || true
-cp -r "${ROOTFS}/home/vladd/.librewolf" "${ROOTFS}/etc/skel/" 2>/dev/null || true
+cp -r "${ROOTFS}/home/live/.config" "${ROOTFS}/etc/skel/" 2>/dev/null || true
+cp -r "${ROOTFS}/home/live/.librewolf" "${ROOTFS}/etc/skel/" 2>/dev/null || true
+
+#=============================================================================
+# PHASE 3: Plymouth + System Hardening + Calamares Branding
+#=============================================================================
+echo "   Configuring system hardening..."
+
+# --- Plymouth: folosim spinner ca fallback, theme-ul custom va fi generat post-install ---
+mkdir -p "${ROOTFS}/usr/share/plymouth/themes/merphisos"
+cat > "${ROOTFS}/usr/share/plymouth/themes/merphisos/merphisos.plymouth" << 'PLYMDATA'
+[Plymouth Theme]
+Name=MerphisOS
+Description=MerphisOS Boot Splash
+ModuleName=spinfinity
+PLYMDATA
+plymouth-set-default-theme -R spinfinity 2>/dev/null || true
+echo "   ✅ Plymouth: spinner theme (custom sprite post-install)"
+
+# --- sysctl hardening ---
+install -D -m 644 /build/config/99-merphisos-sysctl.conf \
+    "${ROOTFS}/etc/sysctl.d/99-merphisos-sysctl.conf" 2>/dev/null || \
+    cat > "${ROOTFS}/etc/sysctl.d/99-merphisos-sysctl.conf" << 'SYSCTL'
+# Network Hardening
+net.ipv4.ip_forward = 0
+net.ipv6.conf.all.forwarding = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv6.conf.all.accept_source_route = 0
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.all.log_martians = 1
+net.core.bpf_jit_enable = 0
+# Kernel Hardening
+kernel.randomize_va_space = 2
+kernel.dmesg_restrict = 1
+kernel.kptr_restrict = 2
+kernel.panic_on_oops = 1
+kernel.exec-shield = 1
+vm.mmap_min_addr = 65536
+kernel.yama.ptrace_scope = 1
+kernel.panic = 10
+SYSCTL
+echo "   ✅ sysctl hardening applied"
+
+# --- nftables firewall ---
+install -D -m 644 /build/config/merphisos-nftables.conf \
+    "${ROOTFS}/etc/nftables.conf" 2>/dev/null || \
+    cat > "${ROOTFS}/etc/nftables.conf" << 'NFTABLES'
+#!/usr/sbin/nft -f
+flush ruleset
+table inet filter {
+    chain input { type filter hook input priority 0; policy drop;
+        iif lo accept
+        ct state established,related accept
+        ct state invalid drop
+        ip protocol icmp limit rate 10/second accept
+        ip6 nexthdr icmpv6 limit rate 10/second accept
+        tcp dport 22 ip saddr { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 } accept
+        tcp dport 22 drop
+        udp dport 67-68 accept
+    }
+    chain forward { type filter hook forward priority 0; policy drop; }
+    chain output { type filter hook output priority 0; policy accept; }
+}
+NFTABLES
+chmod +x "${ROOTFS}/etc/nftables.conf"
+echo "   ✅ nftables firewall configured (deny inbound)"
+
+# --- systemd-resolved Quad9 DoT ---
+cat > "${ROOTFS}/etc/systemd/resolved.conf" << 'RESOLVED'
+[Resolve]
+DNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net
+DNSOverTLS=yes
+DNSSEC=yes
+Cache=yes
+CacheFromLocalhost=yes
+LLMNR=no
+MulticastDNS=no
+RESOLVED
+echo "   ✅ Quad9 DNS-over-TLS configured"
+
+# --- NetworkManager MAC randomization ---
+mkdir -p "${ROOTFS}/etc/NetworkManager/conf.d"
+cat > "${ROOTFS}/etc/NetworkManager/conf.d/99-merphisos-mac.conf" << 'NMMAC'
+[Device]
+wifi.scan-rand-mac-address=yes
+NMMAC
+echo "   ✅ WiFi MAC randomization enabled"
+
+# --- Calamares branding files ---
+if [ -d "/build/calamares" ]; then
+    mkdir -p "${ROOTFS}/etc/calamares/branding/merphisos"
+    cp -r /build/calamares/branding/merphisos/* "${ROOTFS}/etc/calamares/branding/merphisos/" 2>/dev/null || true
+    mkdir -p "${ROOTFS}/etc/calamares/modules"
+    cp -r /build/calamares/modules/* "${ROOTFS}/etc/calamares/modules/" 2>/dev/null || true
+    echo "   ✅ Calamares branding installed"
+fi
+
+# --- SDDM auto-login confirmed ---
+echo "   ✅ SDDM auto-login: live/plasma-wayland"
+
+echo "   ✅ System hardening complete"
 
 echo "   ✅ Hybrido DE configured"
 
