@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# MerphisOS Phase 1 — Bootstrap ISO (Docker-native rootfs)
+# MerphisOS Phase 2 — Hybrido DE ISO Builder
+# Folosește rootfs pre-construit (Docker image merphisos-rootfs)
 set -euo pipefail
 
 BUILD_DIR="/build"
@@ -8,198 +9,204 @@ ISO_DIR="${BUILD_DIR}/iso"
 OUTPUT_DIR="${BUILD_DIR}/output"
 
 echo "=========================================="
-echo "  MerphisOS 0.1-alpha — Bootstrap ISO"
+echo "  MerphisOS 0.2-beta — Hybrido DE"
 echo "=========================================="
-
 mkdir -p "${OUTPUT_DIR}" "${ISO_DIR}/live" "${ISO_DIR}/boot/grub"
 
 #=============================================================================
-# PAS 1: Rootfs din tar pre-generat
+# PAS 1: Rootfs (pre-construit cu toate pachetele)
 #=============================================================================
 echo ""
-echo "[1/5] Extracting rootfs from tar..."
-
+echo "[1/5] Extracting rootfs (Plasma 6 + apps pre-installed)..."
 if [ ! -d "${ROOTFS}/bin" ]; then
     mkdir -p "${ROOTFS}"
     tar -xf "${BUILD_DIR}/rootfs.tar" -C "${ROOTFS}" 2>/dev/null
     mkdir -p "${ROOTFS}/proc" "${ROOTFS}/sys" "${ROOTFS}/dev" "${ROOTFS}/run" "${ROOTFS}/tmp"
-    echo "   ✅ Rootfs extracted"
+    echo "   ✅ Rootfs extracted ($(du -sh "${ROOTFS}" | cut -f1))"
 else
-    echo "   ✅ Rootfs already exists, skipping"
+    echo "   ✅ Already extracted"
 fi
 
 #=============================================================================
-# PAS 2: Configurare sistem de bază
+# PAS 2: LibreWolf (repo oficial)
 #=============================================================================
 echo ""
-echo "[2/5] Configuring base system..."
+echo "[2/5] Adding LibreWolf..."
 
-# Hostname
-echo "merphisos" > "${ROOTFS}/etc/hostname"
-cat > "${ROOTFS}/etc/hosts" << 'EOF'
-127.0.0.1   localhost
-127.0.1.1   merphisos
-::1         localhost ip6-localhost ip6-loopback
-ff02::1     ip6-allnodes
-ff02::2     ip6-allrouters
-EOF
-
-# APT sources
-cat > "${ROOTFS}/etc/apt/sources.list" << 'EOF'
-deb http://deb.debian.org/debian trixie main contrib non-free-firmware
-deb http://deb.debian.org/debian trixie-updates main contrib non-free-firmware
-deb http://security.debian.org/debian-security trixie-security main contrib non-free-firmware
-EOF
-
-# DNS (Quad9 DOT)
-mkdir -p "${ROOTFS}/etc/systemd"
-cat > "${ROOTFS}/etc/systemd/resolved.conf" << 'EOF'
-[Resolve]
-DNS=9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net
-DNSOverTLS=yes
-DNSSEC=allow-downgrade
-EOF
-
-# NetworkManager privacy
-mkdir -p "${ROOTFS}/etc/NetworkManager/conf.d"
-cat > "${ROOTFS}/etc/NetworkManager/conf.d/90-privacy.conf" << 'EOF'
-[connectivity]
-interval=0
-uri=
-[device]
-wifi.scan-rand-mac-address=yes
-EOF
-
-# Firewall
-mkdir -p "${ROOTFS}/etc"
-cat > "${ROOTFS}/etc/nftables.conf" << 'EOF'
-#!/usr/sbin/nft -f
-flush ruleset
-table inet filter {
-    chain input {
-        type filter hook input priority 0; policy drop;
-        ct state invalid drop
-        ct state { established, related } accept
-        iif lo accept
-        icmp type echo-request limit rate 5/second accept
-    }
-    chain forward { type filter hook forward priority 0; policy drop; }
-    chain output { type filter hook output priority 0; policy accept; }
-}
-EOF
-chmod +x "${ROOTFS}/etc/nftables.conf"
-
-# Kernel hardening sysctl
-mkdir -p "${ROOTFS}/etc/sysctl.d"
-cat > "${ROOTFS}/etc/sysctl.d/90-merphisos.conf" << 'EOF'
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
-net.ipv4.tcp_slow_start_after_idle=0
-net.ipv4.conf.all.rp_filter=1
-net.ipv4.conf.default.rp_filter=1
-net.ipv4.tcp_syncookies=1
-net.ipv4.icmp_echo_ignore_broadcasts=1
-net.ipv4.conf.all.accept_redirects=0
-net.ipv4.conf.default.accept_redirects=0
-net.ipv6.conf.all.accept_redirects=0
-net.ipv6.conf.default.accept_redirects=0
-kernel.kptr_restrict=2
-kernel.dmesg_restrict=1
-kernel.printk=3 3 3 3
-kernel.unprivileged_bpf_disabled=1
-net.core.bpf_jit_harden=2
-EOF
-
-# Locale
-cat > "${ROOTFS}/etc/locale.gen" << 'EOF'
-en_US.UTF-8 UTF-8
-ro_RO.UTF-8 UTF-8
-EOF
-
-# Timezone
-ln -sf /usr/share/zoneinfo/Europe/Bucharest "${ROOTFS}/etc/localtime" 2>/dev/null || true
-
-echo "   ✅ Base system configured"
-
-#=============================================================================
-# PAS 3: Instalare pachete în chroot
-#=============================================================================
-echo ""
-echo "[3/5] Installing packages in chroot..."
-
-# Mount /proc and /sys for chroot
 mount --bind /proc "${ROOTFS}/proc" 2>/dev/null || true
 mount --bind /sys "${ROOTFS}/sys" 2>/dev/null || true
 mount --bind /dev "${ROOTFS}/dev" 2>/dev/null || true
-
-# Copy DNS config for chroot
 cp /etc/resolv.conf "${ROOTFS}/etc/resolv.conf" 2>/dev/null || true
 
 chroot "${ROOTFS}" /bin/bash << 'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
-export DEBCONF_NONINTERACTIVE_SEEN=true
 
-# Pre-seed debconf
-echo "debconf debconf/frontend select Noninteractive" | debconf-set-selections
-echo "debconf debconf/priority select critical" | debconf-set-selections
-echo "readline-common readline/editing-mode select Emacs" | debconf-set-selections
+# Add LibreWolf repo
+curl -fsSL https://deb.librewolf.net/keyring.gpg -o /usr/share/keyrings/librewolf.gpg 2>/dev/null || true
+echo 'deb [signed-by=/usr/share/keyrings/librewolf.gpg] https://deb.librewolf.net trixie main' > /etc/apt/sources.list.d/librewolf.list
 
-# Update package cache
 apt-get update -qq 2>/dev/null
-
-# Install base packages
-apt-get install -y -qq \
-    systemd \
-    systemd-resolved \
-    dbus \
-    udev \
-    sudo \
-    linux-image-amd64 \
-    firmware-linux \
-    firmware-iwlwifi \
-    firmware-realtek \
-    firmware-amd-graphics \
-    firmware-misc-nonfree \
-    network-manager \
-    wireless-tools \
-    nftables \
-    apparmor \
-    apparmor-profiles \
-    plymouth \
-    plymouth-themes \
-    curl \
-    wget \
-    git \
-    htop \
-    openssh-client \
-    pipewire \
-    pipewire-pulse \
-    wireplumber \
-    flatpak \
-    kitty \
-    fastfetch \
-    rsync \
-    locales \
-    2>&1 | tail -5
-
-# Generate locale
-locale-gen 2>/dev/null || true
-
-# Create default user
-useradd -m -s /bin/bash -G sudo,audio,video,cdrom,plugdev vladd 2>/dev/null || true
-echo "vladd:merphisos" | chpasswd
-
-# Clean up
-apt-get clean
-rm -rf /var/lib/apt/lists/*
+apt-get install -y -qq librewolf 2>&1 | tail -3 || echo "   ⚠️  LibreWolf install skipped (repo might need update)"
 CHROOT
 
-# Unmount
+# Also add Mullvad Browser via Flatpak
+chroot "${ROOTFS}" flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo 2>/dev/null || true
+
 umount "${ROOTFS}/proc" 2>/dev/null || true
 umount "${ROOTFS}/sys" 2>/dev/null || true
 umount "${ROOTFS}/dev" 2>/dev/null || true
 
-echo "   ✅ Packages installed"
+echo "   ✅ LibreWolf configured"
+
+#=============================================================================
+# PAS 3: Configurare Hybrido DE
+#=============================================================================
+echo ""
+echo "[3/5] Configuring Hybrido DE..."
+
+# --- Hybrido macOS Theme ---
+mkdir -p "${ROOTFS}/usr/share/plasma/desktoptheme/hybrido-macos"
+cat > "${ROOTFS}/usr/share/plasma/desktoptheme/hybrido-macos/metadata.desktop" << 'EOF'
+[Desktop Entry]
+Name=Hybrido macOS
+Comment=macOS-inspired desktop theme for MerphisOS
+Type=X-KDE-Plasma-Theme
+Version=1.0
+Author=MerphisOS
+EOF
+
+cat > "${ROOTFS}/usr/share/plasma/desktoptheme/hybrido-macos/colors" << 'EOF'
+[Colors:Window]
+BackgroundNormal=44,44,46  BackgroundAlternate=55,55,57
+ForegroundNormal=240,240,240  ForegroundAlternate=200,200,200
+ForegroundInactive=160,160,160
+DecorationFocus=0,122,255  DecorationHover=0,122,255
+[Colors:Selection]
+BackgroundNormal=0,122,255  ForegroundNormal=255,255,255
+[Colors:Button]
+BackgroundNormal=58,58,60  BackgroundAlternate=68,68,70
+ForegroundNormal=240,240,240
+[Colors:View]
+BackgroundNormal=28,28,30  BackgroundAlternate=36,36,38
+ForegroundNormal=240,240,240
+[Colors:Header]
+BackgroundNormal=44,44,46  BackgroundAlternate=55,55,57
+ForegroundNormal=240,240,240
+[Colors:Tooltip]
+BackgroundNormal=58,58,60  ForegroundNormal=240,240,240
+EOF
+
+# --- Hybrido Windows Theme ---
+mkdir -p "${ROOTFS}/usr/share/plasma/desktoptheme/hybrido-windows"
+cat > "${ROOTFS}/usr/share/plasma/desktoptheme/hybrido-windows/metadata.desktop" << 'EOF'
+[Desktop Entry]
+Name=Hybrido Windows
+Comment=Windows 11-inspired desktop theme for MerphisOS
+Type=X-KDE-Plasma-Theme
+Version=1.0
+Author=MerphisOS
+EOF
+
+cat > "${ROOTFS}/usr/share/plasma/desktoptheme/hybrido-windows/colors" << 'EOF'
+[Colors:Window]
+BackgroundNormal=44,44,46  BackgroundAlternate=55,55,57
+ForegroundNormal=240,240,240  ForegroundAlternate=200,200,200
+ForegroundInactive=160,160,160
+DecorationFocus=0,120,215  DecorationHover=0,120,215
+[Colors:Selection]
+BackgroundNormal=0,120,215  ForegroundNormal=255,255,255
+[Colors:Button]
+BackgroundNormal=58,58,60  BackgroundAlternate=68,68,70
+ForegroundNormal=240,240,240
+[Colors:View]
+BackgroundNormal=32,32,32  BackgroundAlternate=40,40,40
+ForegroundNormal=240,240,240
+[Colors:Header]
+BackgroundNormal=44,44,46  BackgroundAlternate=55,55,57
+ForegroundNormal=240,240,240
+[Colors:Tooltip]
+BackgroundNormal=58,58,60  ForegroundNormal=240,240,240
+EOF
+
+# --- Wallpaper placeholder ---
+mkdir -p "${ROOTFS}/usr/share/wallpapers/MerphisOS"
+cat > "${ROOTFS}/usr/share/wallpapers/MerphisOS/default.jpg" << 'EOF'
+PLACEHOLDER — Vlad will add the official MerphisOS wallpaper here
+EOF
+chmod 644 "${ROOTFS}/usr/share/wallpapers/MerphisOS/default.jpg"
+
+# --- User config defaults ---
+mkdir -p "${ROOTFS}/home/vladd/.config"
+mkdir -p "${ROOTFS}/home/vladd/.local/share/plasma"
+
+# Plasma config: disable KDE's welcome wizard
+mkdir -p "${ROOTFS}/home/vladd/.config/plasma-workspace"
+cat > "${ROOTFS}/home/vladd/.config/plasma-workspace/first_run" << 'EOF'
+first_run=false
+EOF
+
+# KWin: Wayland, blur, no X11
+cat > "${ROOTFS}/home/vladd/.config/kwinrc" << 'KWIN'
+[Compositing]
+Backend=OpenGL
+Enabled=true
+OpenGLIsUnsafe=false
+
+[Wayland]
+InputMethod[$e]=
+
+[org.kde.kdecoration2]
+library=org.kde.breeze
+theme=Breeze
+KWIN
+
+# Nemo as default file manager
+cat > "${ROOTFS}/home/vladd/.config/mimeapps.list" << 'MIME'
+[Default Applications]
+inode/directory=nemo.desktop;
+application/x-directory=nemo.desktop;
+MIME
+
+# Kitty as default terminal
+cat > "${ROOTFS}/home/vladd/.config/konsolerc" << 'KONSOLE'
+[Desktop Entry]
+DefaultProfile=MerphisOS.profile
+KONSOLE
+
+# LibreWolf privacy overrides
+mkdir -p "${ROOTFS}/home/vladd/.librewolf"
+cat > "${ROOTFS}/home/vladd/.librewolf/overrides.cfg" << 'LIBREWOLF'
+lockPref("privacy.firstparty.isolate", true);
+lockPref("privacy.resistFingerprinting", true);
+lockPref("privacy.trackingprotection.enabled", true);
+lockPref("network.trr.mode", 2);
+lockPref("network.trr.uri", "https://dns.quad9.net/dns-query");
+lockPref("geo.enabled", false);
+lockPref("browser.safebrowsing.enabled", false);
+lockPref("datareporting.healthreport.uploadEnabled", false);
+lockPref("browser.ping-centre.telemetry", false);
+LIBREWOLF
+
+# SDDM
+mkdir -p "${ROOTFS}/etc/sddm.conf.d"
+cat > "${ROOTFS}/etc/sddm.conf.d/merphisos.conf" << 'SDDM'
+[Theme]
+Current=breeze
+Font=Inter,10
+[General]
+HaltCommand=/usr/bin/systemctl poweroff
+RebootCommand=/usr/bin/systemctl reboot
+SDDM
+
+# Fix ownership
+chown -R 1000:1000 "${ROOTFS}/home/vladd"
+
+# Copy to skel for future users
+mkdir -p "${ROOTFS}/etc/skel"
+cp -r "${ROOTFS}/home/vladd/.config" "${ROOTFS}/etc/skel/" 2>/dev/null || true
+cp -r "${ROOTFS}/home/vladd/.librewolf" "${ROOTFS}/etc/skel/" 2>/dev/null || true
+
+echo "   ✅ Hybrido DE configured"
 
 #=============================================================================
 # PAS 4: Generare ISO
@@ -214,7 +221,8 @@ cp "${ROOTFS}/boot/initrd.img-"* "${ISO_DIR}/boot/initrd" 2>/dev/null || true
 # Squashfs
 echo "   Creating squashfs..."
 mksquashfs "${ROOTFS}" "${ISO_DIR}/live/filesystem.squashfs" \
-    -comp zstd -b 1M -no-xattrs -noappend 2>&1 | tail -2
+    -comp zstd -Xcompression-level 19 -b 1M \
+    -no-xattrs -noappend 2>&1 | tail -2
 
 # Grub config
 cat > "${ISO_DIR}/boot/grub/grub.cfg" << 'GRUB'
@@ -226,11 +234,11 @@ insmod gfxterm insmod gfxmenu
 terminal_output gfxterm
 set gfxmode=1920x1080,1366x768,1024x768,auto
 set gfxpayload=keep
-menuentry "MerphisOS 0.1-alpha" {
+menuentry "MerphisOS 0.2-beta — Hybrido DE" {
     linux /boot/vmlinuz boot=live live-media-path=/live/ quiet splash
     initrd /boot/initrd
 }
-menuentry "MerphisOS 0.1-alpha (Safe Mode)" {
+menuentry "MerphisOS 0.2-beta (Safe Mode)" {
     linux /boot/vmlinuz boot=live live-media-path=/live/ nomodeset noapic nolapic
     initrd /boot/initrd
 }
@@ -242,7 +250,7 @@ GRUB
 echo ""
 echo "[5/5] Assembling ISO..."
 
-ISO_NAME="merphisos-0.1-alpha-amd64.iso"
+ISO_NAME="merphisos-0.2-beta-hybrido-amd64.iso"
 ISO_OUTPUT="${OUTPUT_DIR}/${ISO_NAME}"
 
 grub-mkrescue --output="${ISO_OUTPUT}" "${ISO_DIR}" 2>&1 | tail -3
@@ -252,7 +260,7 @@ if [ -f "${ISO_OUTPUT}" ]; then
     MD5=$(md5sum "${ISO_OUTPUT}" | cut -d' ' -f1)
     echo ""
     echo "=========================================="
-    echo "  ✅ SUCCESS!"
+    echo "  ✅ MERPHISOS 0.2-beta BUILD SUCCESS!"
     echo "  📁 ${ISO_OUTPUT}"
     echo "  📦 Size: ${SIZE}"
     echo "  🔐 MD5: ${MD5}"

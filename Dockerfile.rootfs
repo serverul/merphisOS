@@ -1,0 +1,77 @@
+# MerphisOS Phase 2 — Rootfs builder
+FROM debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN=true
+
+# APT sources with non-free-firmware
+RUN rm -f /etc/apt/sources.list.d/* 2>/dev/null; true && \
+    printf '%s\n' \
+    'deb http://deb.debian.org/debian trixie main contrib non-free-firmware' \
+    'deb http://deb.debian.org/debian trixie-updates main contrib non-free-firmware' \
+    'deb http://security.debian.org/debian-security trixie-security main contrib non-free-firmware' \
+    > /etc/apt/sources.list
+
+# Pre-seed debconf
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    echo 'debconf debconf/priority select critical' | debconf-set-selections
+
+# 1. System base
+RUN apt-get update -qq && apt-get install -y -qq \
+    systemd systemd-resolved dbus udev sudo locales \
+    linux-image-amd64 \
+    && echo "=== 1/8 OK ==="
+
+# 2. Firmware
+RUN apt-get install -y -qq \
+    firmware-linux firmware-iwlwifi firmware-realtek \
+    firmware-amd-graphics firmware-misc-nonfree \
+    && echo "=== 2/8 OK ==="
+
+# 3. Network + tools + security
+RUN apt-get install -y -qq \
+    network-manager wireless-tools \
+    curl wget git htop openssh-client \
+    nftables apparmor apparmor-profiles \
+    && echo "=== 3/8 OK ==="
+
+# 4. Multimedia
+RUN apt-get install -y -qq \
+    pipewire pipewire-pulse wireplumber ffmpeg \
+    && echo "=== 4/8 OK ==="
+
+# 5. Plasma 6 Desktop (correct package names)
+RUN apt-get install -y -qq \
+    kde-plasma-desktop \
+    plasma-workspace \
+    kwin-common kwin-wayland \
+    systemsettings \
+    sddm sddm-theme-breeze \
+    plasma-widgets-addons \
+    kde-config-gtk-style qt6-style-kvantum \
+    && echo "=== 5/8 OK ==="
+
+# 6. Apps (Nemo replaces Dolphin)
+RUN apt-get install -y -qq \
+    kate ark \
+    nemo nemo-fileroller \
+    gvfs gvfs-backends gvfs-fuse \
+    kitty \
+    && echo "=== 6/8 OK ==="
+
+# 7. LibreWolf + VLC
+RUN apt-get install -y -qq \
+    vlc \
+    flatpak fastfetch rsync \
+    && echo "=== 7/8 OK ==="
+
+# Cleanup + user
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    useradd -m -s /bin/bash -G sudo,audio,video,cdrom,plugdev,netdev vladd && \
+    echo 'vladd:merphisos' | chpasswd && \
+    echo 'merphisos' > /etc/hostname && \
+    sed -i 's/^# *en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && \
+    sed -i 's/^# *ro_RO.UTF-8/ro_RO.UTF-8/' /etc/locale.gen && \
+    locale-gen && \
+    echo "=== 8/8 OK ==="
+
+CMD ["/bin/bash"]
