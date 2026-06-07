@@ -58,9 +58,12 @@ RUN apt-get install -y -qq \
     kitty \
     && echo "=== 6/8 OK ==="
 
-# 7. LibreWolf + VLC
-RUN apt-get install -y -qq \
-    vlc \
+# 7. LibreWolf (via extrepo) + VLC + tools
+RUN apt-get install -y -qq extrepo && \
+    extrepo enable librewolf && \
+    apt-get update -qq && \
+    apt-get install -y -qq \
+    librewolf vlc \
     flatpak fastfetch rsync \
     && echo "=== 7/8 OK ==="
 

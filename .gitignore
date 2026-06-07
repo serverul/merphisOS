@@ -1,39 +1,12 @@
-# MerphisOS — ignore files
-
-# Build output
-build/
-iso/
-out/
-
-# Kernel source downloads
-/tmp/merphisos-kernel/
-
-# IDE
+*.iso
+*.tar
+*.squashfs
+__pycache__/
+node_modules/
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Keys (these should never be committed)
-keys/*.key
-keys/*.crt
-keys/*.pem
-
-# GPG
-*.gpg
-*.asc
-
-# ISO files
-*.iso
-
-# QEMU disks
-*.qcow2
-
-# Temporary
-*.tmp
-*.bak
+build/
+artwork/raw/

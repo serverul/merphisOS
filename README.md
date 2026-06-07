@@ -1,139 +1,67 @@
-# MerphisOS
+# MerphisOS 0.2-beta — Hybrido DE 🚀
 
 > **Your system, your rules.**
 
-[![]()]() *— logo aici —*
-
-**MerphisOS** este un sistem de operare Linux **privacy-first, securizat și
-frumos**, construit pentru oameni care își găzduiesc singuri serviciile și
-prețuiesc confidențialitatea fără compromisuri.
-
-Bazat pe **Debian 13 "Trixie"**, cu **kernel custom**, **Hybrido Desktop
-Environment** (un mediu desktop care combină ce e mai bun din macOS și
-Windows), și o suită de aplicații alese cu grijă pentru confidențialitate
-și productivitate.
+**MerphisOS** este un sistem de operare Linux **privacy-first, securizat și frumos**, construit pe **Debian 13 "Trixie"**, cu **Hybrido Desktop Environment** și **Plasma 6** pe **Wayland** (zero X11).
 
 ---
 
-## ✨ Caracteristici
+## 🎯 Latest Release: v0.2-beta
 
-| | |
+### ✨ Ce e nou
+| Componentă | Status |
 |---|---|
-| 🔒 **Privacy by design** | Zero telemetry, DNS-over-HTTPS implicit, firewall activ, MAC randomizare, fără servicii care sună acasă |
-| 🎨 **Hybrido DE** | Mediu desktop care arată și funcționează ca **macOS** sau **Windows** — alegi tu printr-un toggle |
-| ⚡ **Kernel custom** | Ultima versiune Linux stabilă, compilat cu hardening maxim, doar driverele necesare |
-| 📦 **Flatpak + Distrobox** | Aplicații GUI sandboxed + tool-uri CLI în containere — sistemul de bază rămâne curat |
-| 🏠 **Self-hosting ready** | Vaultwarden, Mullvad VPN, servicii Docker — configurate din prima |
-| 🚀 **Plug and play** | Instalezi și ai: LibreWolf, VLC, Stremio, Bitwarden, terminal, Git, Python, Node.js — totul gata |
+| 🖥️ **Plasma 6.3.5** + KWin Wayland | ✅ |
+| 🌐 **LibreWolf 151** (browser privat) | ✅ |
+| 🗂️ **Nemo** file manager (înlocuiește Dolphin) | ✅ |
+| 🖥️ **Kitty** terminal | ✅ |
+| 📺 **VLC 3.0.23** | ✅ |
+| 🎨 **Hybrido macOS + Windows themes** | ✅ |
+| 🖼️ **Wallpaper MerphisOS oficial** | ✅ (9 variante inclusiv space nebula) |
+| 🔒 **nftables, Quad9 DoT, MAC randomizare** | ✅ |
+| 🔔 **SDDM** login manager cu logo MerphisOS | ✅ |
+| 🚫 **X11** — exclus complet (EOL) | ✅ |
 
----
+### 📥 Download ISO
+> **⚠️ Available at:** Contactează-mă pentru link-ul de download al ISO-ului (1.9GB)
 
-## 🖼️ Hybrido Desktop Environment
-
-**Hybrido** este inima MerphisOS. Un mediu desktop care nu te obligă să alegi
-între estetică și funcționalitate.
-
-### Modul macOS
-
-- Panel floating sus cu Global Menu
-- Launchpad-style app launcher
-- Window controls în stânga
-- Dock opțional
-- Workspace-uri cu tranziții fluide
-
-### Modul Windows
-
-- Taskbar jos cu buton Start
-- Start Menu clasic
-- System tray + Action Center
-- Snap Assist cu ghidaje vizuale
-- Window controls în dreapta
-
-> 🔄 **Comutare instant** — o setare în System Settings schimbă tot layout-ul,
-> tema, și comportamentul.
-
----
-
-## 📦 Aplicații Implicite
-
-| Categorie | Aplicație |
-|---|---|
-| 🌐 Browser | **LibreWolf** + **Mullvad Browser** |
-| 📺 Media | **VLC**, **Stremio** |
-| 🔒 VPN | **Mullvad VPN** |
-| 🆔 Passwords | **Bitwarden** (Vaultwarden-ready) |
-| 🖥️ Terminal | **Kitty** |
-| 🗂️ File Manager | **Nemo** |
-| 📝 Editor | **Kate** (Vim mode) |
-| 🐳 Containers | **Podman** + **Distrobox** |
-| 🧰 Dev Tools | Git, Python 3, Node.js LTS, GCC |
-
----
-
-## 🔧 System Requirements
-
-| Component | Minimum | Recommended |
-|---|---|---|
-| **CPU** | Dual-core x86_64 | Quad-core+ |
-| **RAM** | 4 GB | 8 GB+ |
-| **Storage** | 20 GB | 64 GB+ (SSD) |
-| **GPU** | Intel/AMD/NVIDIA | Any modern GPU |
-
----
-
-## 🚧 Status
-
-**MerphisOS este în faza de proiectare și dezvoltare incipientă.**
-
-- [x] Specificație tehnică draft
-- [ ] Kernel config și build system
-- [ ] Hybrido DE teme și layout-uri
-- [ ] Scripturi de build
-- [ ] ISO bootabil
-- [ ] Testare pe hardware real
-- [ ] Prima lansare
-
----
-
-## 🏗️ Build
-
+### 🔧 Build from source
 ```bash
-# Prerequisites
-git clone git@github.com:serverul/merphisOS.git
+# Prerequisites: Docker, ~20GB disk space
+git clone https://github.com/serverul/merphisOS
 cd merphisOS
 
-# 1. Export Debian Trixie rootfs (needs Docker)
-docker create --name merphisos-rootfs debian:trixie-slim
-docker export merphisos-rootfs -o /tmp/debian-trixie-rootfs.tar
-docker rm merphisos-rootfs
+# Build rootfs Docker image
+docker build -t merphisos-rootfs -f Dockerfile.rootfs .
 
-# 2. Build ISO (needs Docker with --privileged)
-docker build -t merphisos-builder -f tools/Dockerfile.build .
-docker run --rm --privileged \
-  -v $(pwd)/base/scripts/build-iso.sh:/build/build.sh:ro \
-  -v $(pwd)/build:/build/output \
-  -v /tmp/debian-trixie-rootfs.tar:/build/rootfs.tar:ro \
-  merphisos-builder \
-  bash /build/build.sh
-
-# 3. ISO is at build/merphisos-0.1-alpha-amd64.iso
+# Build ISO
+mkdir -p /tmp/merphisos-build && cd /tmp/merphisos-build
+docker export $(docker create merphisos-rootfs:latest) -o rootfs.tar
+# ... (see tools/build-iso.sh for full pipeline)
 ```
 
-> **Primul ISO MerphisOS (0.1-alpha) a fost construit cu succes pe 7 Iunie 2026.**
+---
+
+## 🔒 Caracteristici principale
+
+- **Privacy by design**: Zero telemetry, DNS-over-TLS (Quad9), firewall nftables, MAC randomizare
+- **Hybrido DE**: Comută între macOS și Windows styling
+- **Flatpak + Flathub** pre-configurat
+- **Kernel custom** (în lucru)
+- Utilizator `vladd` (parola: `merphisos`)
 
 ---
 
-## 🤝 Contribuții
+## 🏗️ Roadmap
 
-MerphisOS este un proiect personal. Dacă ai găsit ceva util, deschide un issue
-sau dă un semn. ✌️
-
----
-
-## 📜 Licență
-
-*(de stabilit — GPLv3 sau MIT)*
+- [x] **Phase 1**: Alpha ISO (Plasma 6 minimal, fără X11)
+- [x] **Phase 2**: Hybrido DE + LibreWolf + artwork
+- [ ] **Phase 3**: Kernel custom + boot splash Plymouth
+- [ ] **Phase 4**: switch-mode.sh (macOS/Windows toggle)
+- [ ] **Phase 5**: Calamares installer
 
 ---
 
-*Creat cu 🧠 de Vlad și Merphis.*
+## 📜 License
+
+GNU General Public License v3.0
