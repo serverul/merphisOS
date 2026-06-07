@@ -20,29 +20,72 @@ echo "[1/4] Rootfs already extracted at ${ROOTFS}"
 echo "   Size: $(du -sh "${ROOTFS}" | cut -f1)"
 
 #=============================================================================
-# PAS 1b: Rebuild initrd with compression (fix OOM in GRUB)
+# PAS 1b: Generate proper initrd with live-boot (fix broken Docker initrd)
 #=============================================================================
 echo ""
-echo "[2/4] Rebuilding initrd with compression..."
-mount --bind /proc "${ROOTFS}/proc" 2>/dev/null || true
-mount --bind /sys "${ROOTFS}/sys" 2>/dev/null || true
-mount --bind /dev "${ROOTFS}/dev" 2>/dev/null || true
-cp /etc/resolv.conf "${ROOTFS}/etc/resolv.conf" 2>/dev/null || true
-
-chroot "${ROOTFS}" /bin/bash << 'CHROOT_INITRD'
-export DEBIAN_FRONTEND=noninteractive
-# Rebuild initrd with zstd compression
-echo "COMPRESS=zstd" >> /etc/initramfs-tools/initramfs.conf
-update-initramfs -u -k all 2>&1 | tail -5
-echo "   ✅ Initrd rebuilt"
-# Check size after compression
-ls -lh /boot/initrd.img-* 2>/dev/null
-CHROOT_INITRD
-
-umount "${ROOTFS}/proc" 2>/dev/null || true
-umount "${ROOTFS}/sys" 2>/dev/null || true
-umount "${ROOTFS}/dev" 2>/dev/null || true
-echo "   ✅ Initrd compression complete"
+echo "[2/4] Generating proper initrd with live-boot support..."
+# Copy kernel modules from rootfs to builder (for mkinitramfs)
+KERNEL_VERSION=$(ls "${ROOTFS}/lib/modules/" 2>/dev/null | head -1)
+if [ -n "${KERNEL_VERSION}" ]; then
+    echo "   Building initrd for kernel: ${KERNEL_VERSION}"
+    mkdir -p /lib/modules
+    cp -a "${ROOTFS}/lib/modules/${KERNEL_VERSION}" /lib/modules/
+    
+    # Install tools needed for initrd generation
+    apt-get install -y -qq initramfs-tools live-boot 2>&1 | tail -1
+    
+    # Configure compression
+    echo "COMPRESS=zstd" > /etc/initramfs-tools/initramfs.conf
+    echo "MODULES=most" >> /etc/initramfs-tools/initramfs.conf
+    
+    # Copy live-boot hook from rootfs if present
+    if [ -f "${ROOTFS}/usr/share/initramfs-tools/scripts/live" ]; then
+        mkdir -p /usr/share/initramfs-tools/scripts/
+        cp "${ROOTFS}/usr/share/initramfs-tools/scripts/live" /usr/share/initramfs-tools/scripts/
+    fi
+    
+    # Generate initrd
+    mkinitramfs -o /tmp/initrd.img "${KERNEL_VERSION}" 2>&1 | tail -3
+    
+    if [ -f /tmp/initrd.img ]; then
+        INITRD_SIZE=$(stat --format=%s /tmp/initrd.img)
+        echo "   ⏺ Generated initrd: ${INITRD_SIZE} bytes ($(( INITRD_SIZE / 1024 / 1024 )) MB)"
+        
+        # Copy to ISO directory
+        cp /tmp/initrd.img "${ISO_DIR}/boot/initrd"
+        echo "   ✅ Initrd copied to ISO"
+        
+        # Verify initrd — modern initrd has 2 sections:
+        # 1. Uncompressed cpio with *.zst and *.xz kernel modules
+        # 2. Zstd-compressed cpio with init, scripts, busybox
+        # Find the zstd magic (28 b5 2f fd) to extract the second section
+        echo "   Verifying initrd structure..."
+        INITRD_SIZE=$(stat --format=%s /tmp/initrd.img)
+        # Search for zstd magic in the second half of the file
+        ZSTD_OFFSET=$(od -A d -t x1 -j $((INITRD_SIZE / 2)) /tmp/initrd.img 2>/dev/null | \
+            grep "28 b5 2f fd" | head -1 | awk '{print $1}')
+        if [ -n "${ZSTD_OFFSET}" ]; then
+            ZSTD_OFFSET=$((ZSTD_OFFSET + 9))  # adjust for od line offset
+            echo "   Found compressed section at byte ${ZSTD_OFFSET}"
+            if dd if=/tmp/initrd.img bs=1024 skip=$((ZSTD_OFFSET / 1024)) 2>/dev/null | \
+                zstd -dc 2>/dev/null | cpio -t 2>/dev/null | grep -q "scripts/live"; then
+                echo "   ✅ live-boot verified (zstd compressed section)"
+            else
+                echo "   ⚠️  live-boot not found in compressed section!"
+            fi
+        fi
+        if cpio -t < /tmp/initrd.img 2>/dev/null | grep -q "^init$"; then
+            echo "   ✅ /init script verified in initrd"
+        else
+            echo "   ⚠️  /init not found in initrd!"
+        fi
+    else
+        echo "   ❌ Failed to generate initrd!"
+    fi
+else
+    echo "   ⚠️  No kernel modules found in rootfs!"
+fi
+echo "   ✅ Initrd generation complete"
 
 #=============================================================================
 # PAS 3: Configurare Hybrido DE
@@ -551,21 +594,20 @@ echo "   ✅ Hybrido DE configured"
 echo ""
 echo "[4/4] Generating ISO..."
 
-# Kernel + initrd — robust copy, fail if missing
-echo "   Copying kernel and initrd..."
+# Kernel + initrd — copy kernel, skip initrd (already generated in step 2)
+echo "   Copying kernel..."
 VMLINUZ_FILE=$(ls "${ROOTFS}/boot/vmlinuz-"* 2>/dev/null | head -1)
-INITRD_FILE=$(ls "${ROOTFS}/boot/initrd.img-"* 2>/dev/null | head -1)
 if [ -n "${VMLINUZ_FILE}" ] && [ -f "${VMLINUZ_FILE}" ]; then
     cp "${VMLINUZ_FILE}" "${ISO_DIR}/boot/vmlinuz"
     echo "   ✅ Kernel: $(basename ${VMLINUZ_FILE})"
 else
     echo "   ⚠️ No kernel found!"
 fi
-if [ -n "${INITRD_FILE}" ] && [ -f "${INITRD_FILE}" ]; then
-    cp "${INITRD_FILE}" "${ISO_DIR}/boot/initrd"
-    echo "   ✅ Initrd: $(basename ${INITRD_FILE}) ($(du -h "${INITRD_FILE}" | cut -f1))"
+# Initrd is already at ${ISO_DIR}/boot/initrd from step 2 — DON'T overwrite
+if [ -f "${ISO_DIR}/boot/initrd" ]; then
+    echo "   ✅ Initrd already in ISO: $(du -h "${ISO_DIR}/boot/initrd" | cut -f1)"
 else
-    echo "   ⚠️ No initrd found!"
+    echo "   ⚠️ No initrd in ISO!"
 fi
 
 # Squashfs

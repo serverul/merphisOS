@@ -2,13 +2,16 @@
 FROM debian:trixie-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install ISO build tools
+# Install ISO build + initrd generation tools
 RUN apt-get update -qq && apt-get install -y -qq \
     xorriso mtools \
     grub-pc-bin \
     grub-efi-amd64-bin \
     squashfs-tools \
     rsync \
+    initramfs-tools \
+    live-boot \
+    busybox \
     && rm -rf /var/lib/apt/lists/*
 
 # Build directory
