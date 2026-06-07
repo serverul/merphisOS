@@ -400,6 +400,121 @@ fi
 # --- SDDM auto-login confirmed ---
 echo "   ✅ SDDM auto-login: live/plasma-wayland"
 
+#=============================================================================
+# TELEMETRY: Disable all OS and app telemetry
+#=============================================================================
+echo "   Disabling telemetry and data collection..."
+
+# --- KDE User Feedback (kuserfeedback) ---
+mkdir -p "${ROOTFS}/etc/xdg/KDE"
+cat > "${ROOTFS}/etc/xdg/kdeglobals" << 'KDEGLOBALS'
+[KDE User Feedback]
+FeedbackEnabled=false
+KDEGLOBALS
+
+# --- KDE Privacy (recent files, activity tracking) ---
+mkdir -p "${ROOTFS}/home/live/.config"
+cat > "${ROOTFS}/home/live/.config/kactivitymanagerdrc" << 'KACT'
+[main]
+disable-activity-tracking=true
+disable-recent-files=true
+KACT
+cat > "${ROOTFS}/home/live/.config/kdeglobals" << 'KDEPRIV'
+[KDE User Feedback]
+FeedbackEnabled=false
+[Privacy]
+RecentFiles=false
+Activities=false
+ApplicationUsage=false
+NotificationHistory=false
+KDEPRIV
+cp "${ROOTFS}/home/live/.config/kdeglobals" "${ROOTFS}/etc/skel/.config/kdeglobals" 2>/dev/null || true
+
+# --- Baloo (file indexer) completely disabled ---
+mkdir -p "${ROOTFS}/home/live/.config"
+cat > "${ROOTFS}/home/live/.config/baloofilerc" << 'BALOO'
+[Basic Settings]
+Indexing-Enabled=false
+IndexRecentFiles=false
+OnlyIndexBasicMetadata=true
+Exclude Filters=*
+Exclude Folders=/
+BALOO
+cat > "${ROOTFS}/etc/xdg/baloofilerc" << 'BALOOETC'
+[Basic Settings]
+Indexing-Enabled=false
+IndexRecentFiles=false
+OnlyIndexBasicMetadata=true
+BALOOETC
+
+# --- systemd-journald: volatile, limited ---
+cat > "${ROOTFS}/etc/systemd/journald.conf.d/99-merphisos.conf" << 'JOURNAL'
+[Journal]
+Storage=volatile
+SystemMaxUse=50M
+ForwardToConsole=no
+Audit=no
+JOURNAL
+
+# --- systemd-coredump: disabled ---
+mkdir -p "${ROOTFS}/etc/systemd/coredump.conf.d"
+cat > "${ROOTFS}/etc/systemd/coredump.conf.d/99-merphisos.conf" << 'COREDUMP'
+[Coredump]
+Storage=none
+ProcessSizeMax=0
+COREDUMP
+
+# --- LibreWolf system-wide telemetry OFF ---
+mkdir -p "${ROOTFS}/etc/librewolf"
+cat > "${ROOTFS}/etc/librewolf/overrides.cfg" << 'LWTELE'
+// MerphisOS — System-wide LibreWolf telemetry override
+lockPref("app.normandy.enabled", false);
+lockPref("app.shield.optoutstudies.enabled", false);
+lockPref("browser.newtabpage.activity-stream.feeds.telemetry", false);
+lockPref("browser.newtabpage.activity-stream.telemetry", false);
+lockPref("browser.ping-centre.telemetry", false);
+lockPref("browser.safebrowsing.enabled", false);
+lockPref("browser.tabs.crashReporting.sendReport", false);
+lockPref("datareporting.healthreport.uploadEnabled", false);
+lockPref("datareporting.policy.dataSubmissionEnabled", false);
+lockPref("devtools.onboarding.telemetry.logged", true);
+lockPref("dom.push.enabled", false);
+lockPref("extensions.pocket.enabled", false);
+lockPref("network.allow-experiments", false);
+lockPref("media.video_stats.enabled", false);
+lockPref("toolkit.telemetry.archive.enabled", false);
+lockPref("toolkit.telemetry.bhrPing.enabled", false);
+lockPref("toolkit.telemetry.enabled", false);
+lockPref("toolkit.telemetry.hybridContent.enabled", false);
+lockPref("toolkit.telemetry.unified", false);
+lockPref("toolkit.telemetry.server", "");
+lockPref("privacy.trackingprotection.enabled", true);
+LWTELE
+# Also copy to user's .librewolf
+mkdir -p "${ROOTFS}/home/live/.librewolf"
+cp "${ROOTFS}/etc/librewolf/overrides.cfg" "${ROOTFS}/home/live/.librewolf/overrides.cfg"
+cp "${ROOTFS}/etc/librewolf/overrides.cfg" "${ROOTFS}/etc/skel/.librewolf/overrides.cfg" 2>/dev/null || true
+
+# --- VLC: disable update check + metadata network ---
+mkdir -p "${ROOTFS}/home/live/.config/vlc"
+cat > "${ROOTFS}/home/live/.config/vlc/vlcrc" << 'VLCRC'
+[main]
+update-check=0
+metadata-network-access=0
+lua-network=0
+VLCRC
+cp -r "${ROOTFS}/home/live/.config/vlc" "${ROOTFS}/etc/skel/.config/" 2>/dev/null || true
+
+# --- Flatpak: disable auto-update checks ---
+mkdir -p "${ROOTFS}/etc/flatpak"
+cat > "${ROOTFS}/etc/flatpak/flatpakrc" << 'FLATPAKRC'
+[Flatpak]
+extra-languages=
+update-auto=false
+FLATPAKRC
+
+echo "   ✅ All telemetry disabled (KDE, LibreWolf, VLC, systemd, Flatpak, Baloo, DrKonqi)"
+
 echo "   ✅ System hardening complete"
 
 echo "   ✅ Hybrido DE configured"
