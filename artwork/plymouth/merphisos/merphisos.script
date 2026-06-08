@@ -1,0 +1,88 @@
+# MerphisOS Plymouth Boot Splash
+# Script-based theme for the `script` Plymouth plugin
+
+MerphisOS.TextColor = 0.94, 0.94, 0.94, 1.0
+MerphisOS.AccentColor = 0.0, 0.59, 1.0, 1.0
+MerphisOS.DimColor = 0.5, 0.5, 0.5, 0.5
+
+MerphisOS.Width = Window.GetWidth();
+MerphisOS.Height = Window.GetHeight();
+MerphisOS.CenterX = MerphisOS.Width / 2;
+MerphisOS.CenterY = MerphisOS.Height / 2;
+
+MerphisOS.bg_image = Image("background.png");
+MerphisOS.bg_sprite = Sprite();
+MerphisOS.bg_sprite.SetImage(MerphisOS.bg_image);
+MerphisOS.bg_sprite.SetPosition(0, 0, 1);
+MerphisOS.bg_sprite.SetOpacity(0.8);
+
+MerphisOS.logo_image = Image("logo.png");
+MerphisOS.logo_sprite = Sprite();
+MerphisOS.logo_sprite.SetImage(MerphisOS.logo_image);
+MerphisOS.logo_sprite.SetPosition(
+    MerphisOS.CenterX - MerphisOS.logo_image.GetWidth() / 2,
+    MerphisOS.CenterY - 80,
+    10
+);
+
+MerphisOS.pb_bg = Image("progress-bar.png");
+MerphisOS.pb_fill = Image("progress-fill.png");
+
+MerphisOS.pb_sprite = Sprite();
+MerphisOS.pb_sprite.SetImage(MerphisOS.pb_bg);
+MerphisOS.pb_sprite.SetPosition(
+    MerphisOS.CenterX - MerphisOS.pb_bg.GetWidth() / 2,
+    MerphisOS.CenterY + 60,
+    10
+);
+
+MerphisOS.pb_fill_sprite = Sprite();
+MerphisOS.pb_fill_sprite.SetImage(MerphisOS.pb_fill);
+MerphisOS.pb_fill_sprite.SetPosition(
+    MerphisOS.CenterX - MerphisOS.pb_bg.GetWidth() / 2 + 2,
+    MerphisOS.CenterY + 62,
+    11
+);
+
+MerphisOS.msg_sprite = Sprite();
+MerphisOS.msg_sprite.SetPosition(MerphisOS.CenterX, MerphisOS.CenterY + 100, 10);
+
+MerphisOS.throbber_frames = [];
+for (MerphisOS.i = 0; MerphisOS.i < 24; MerphisOS.i++) {
+    if (MerphisOS.i < 10) {
+        MerphisOS.fname = "throbber/throbber-0" + MerphisOS.i + ".png";
+    } else {
+        MerphisOS.fname = "throbber/throbber-" + MerphisOS.i + ".png";
+    }
+    MerphisOS.throbber_frames[MerphisOS.i] = Image(MerphisOS.fname);
+}
+
+MerphisOS.throbber_sprite = Sprite();
+MerphisOS.throbber_sprite.SetPosition(
+    MerphisOS.CenterX - 24,
+    MerphisOS.CenterY - 24,
+    10
+);
+MerphisOS.throbber_frame = 0;
+
+fun refresh_callback () {
+    MerphisOS.throbber_frame = MerphisOS.throbber_frame + 1;
+    if (MerphisOS.throbber_frame >= 24) {
+        MerphisOS.throbber_frame = 0;
+    }
+    MerphisOS.throbber_sprite.SetImage(
+        MerphisOS.throbber_frames[MerphisOS.throbber_frame]
+    );
+
+    MerphisOS.progress = Window.GetProgress();
+    if (MerphisOS.progress > 0) {
+        MerphisOS.fill_width = (MerphisOS.pb_bg.GetWidth() - 4) * MerphisOS.progress;
+    }
+
+    MerphisOS.boot_msg = Window.GetStatus();
+    if (MerphisOS.boot_msg) {
+        MerphisOS.msg_sprite.SetText(MerphisOS.boot_msg);
+    }
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
